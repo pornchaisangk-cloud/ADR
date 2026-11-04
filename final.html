@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบประเมินและวินิจฉัยแยกโรคผิวหนังกลุ่มตุ่มน้ำ (Cutaneous Blisters Triage)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font: Prompt -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Prompt', sans-serif; background-color: #f8fafc; }
+        .step-transition { transition: all 0.3s ease-in-out; }
+        .card-selectable { transition: all 0.2s ease-in-out; cursor: pointer; }
+        .card-selectable:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .card-selectable.selected { border-color: #2563eb; background-color: #eff6ff; ring: 2px; ring-color: #2563eb; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .checkbox-group label { transition: all 0.2s ease-in-out; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col justify-between">
+
+    <!-- Header / Navigation -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-md">
+                    <i class="fa-solid fa-file-waveform text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg md:text-xl font-bold text-slate-900 leading-tight">BlisterDx Assistant</h1>
+                    <p class="text-xs text-slate-500">ระบบประเมินและแยกโรคผิวหนังกลุ่มตุ่มน้ำ (Cutaneous Blisters)</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+                <button id="galleryBtn" onclick="openGalleryModal()" class="flex items-center space-x-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-sm font-medium transition">
+                    <i class="fa-regular fa-images text-blue-600"></i>
+                    <span class="hidden sm:inline">รูปภาพตัวอย่างผื่น</span>
+                </button>
+                <button onclick="resetAssessment()" class="flex items-center space-x-1 text-xs text-slate-500 hover:text-red-600 px-2 py-2 rounded transition">
+                    <i class="fa-solid fa-rotate-left"></i>
+                    <span class="hidden sm:inline">เริ่มใหม่</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-4xl mx-auto px-4 py-6 flex-grow w-full">
+
+        <!-- Progress Tracker -->
+        <div class="mb-6 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex justify-between items-center mb-2 text-xs font-semibold text-slate-500">
+                <span id="stepIndicator">ขั้นตอน 1 จาก 5: ประเมินรอยโรคพื้นฐาน</span>
+                <span id="progressPercent">20%</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style="width: 20%"></div>
+            </div>
+        </div>
+
+        <!-- Warning Disclaimer Banner -->
+        <div class="bg-amber-50 border-l-4 border-amber-500 p-3 mb-6 rounded-r-xl text-xs text-amber-800 flex items-start space-x-3">
+            <i class="fa-solid fa-triangle-exclamation text-amber-600 text-lg flex-shrink-0 mt-0.5"></i>
+            <div>
+                <span class="font-semibold">ข้อตกลงและคำเตือนการใช้งาน:</span> เครื่องมือนี้จัดทำขึ้นเพื่อช่วยสนับสนุนการตัดสินใจเบื้องต้นตามแนวทางการวินิจฉัยโรคผิวหนังเท่านั้น ไม่สามารถทดแทนการวินิจฉัยโดยแพทย์ผู้เชี่ยวชาญหรือการตรวจทางพยาธิวิทยา (Biopsy) ได้
+            </div>
+        </div>
+
+        <!-- ================= STEP 1: BASIC SKIN LESION ================= -->
+        <section id="step1" class="step-transition bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex items-center space-x-3 mb-4 border-b border-slate-100 pb-3">
+                <div class="bg-teal-100 text-teal-600 p-2 rounded-lg">
+                    <i class="fa-solid fa-magnifying-glass-chart text-lg"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900">Step 1: ประเมินรอยโรคพื้นฐาน (Basic Skin Lesion Checklist)</h2>
+                    <p class="text-xs text-slate-500">ติ๊กเลือกข้อมูลรอยโรคเบื้องต้น เพื่อบันทึกเป็นประวัติก่อนเจาะลึกอาการ</p>
+                </div>
+            </div>
+
+            <!-- Group 1: Primary Lesion -->
+            <div class="mb-5">
+                <h3 class="text-sm font-bold text-slate-700 mb-2 border-l-4 border-teal-500 pl-2">1. Primary Lesion (รอยโรคปฐมภูมิ)</h3>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-2 checkbox-group">
+                    <label class="flex items-center space-x-2 bg-slate-50 p-2 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                        <input type="checkbox" class="primary-chk h-4 w-4 text-blue-600 rounded" value="vesicle">
+                        <span class="text-sm font-medium">Vesicle (ตุ่มน้ำใสเล็ก)</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-slate-50 p-2 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                        <input type="checkbox" class="primary-chk h-4 w-4 text-blue-600 rounded" value="bulla">
+                        <span class="text-sm font-medium">Bulla (ตุ่มน้ำใสใหญ่)</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-slate-50 p-2 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                        <input type="checkbox" class="primary-chk h-4 w-4 text-slate-600 rounded" value="pustule">
+                        <span class="text-sm text-slate-700">Pustule (ตุ่มหนอง)</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-slate-50 p-2 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                        <input type="checkbox" class="primary-chk h-4 w-4 text-slate-600 rounded" value="macule">
+                        <span class="text-sm text-slate-700">Macule (จุดราบ)</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-slate-50 p-2 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                        <input type="checkbox" class="primary-chk h-4 w-4 text-slate-600 rounded" value="patch">
+                        <span class="text-sm text-slate-700">Patch (ปื้นราบ)</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-slate-50 p-2 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                        <input type="checkbox" class="primary-chk h-4 w-4 text-slate-600 rounded" value="papule">
+                        <span class="text-sm text-slate-700">Papule (ตุ่มนูนเล็ก)</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-slate-50 p-2 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                        <input type="checkbox" class="primary-chk h-4 w-4 text-slate-600 rounded" value="plaque">
+                        <span class="text-sm text-slate-700">Plaque (ปื้นนูน)</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-slate-50 p-2 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                        <input type="checkbox" class="primary-chk h-4 w-4 text-slate-600 rounded" value="nodule">
+                        <span class="text-sm text-slate-700">Nodule (ก้อนลึก)</span>
+                    </label>
+                    <label class="flex items-center space-x-2 bg-slate-50 p-2 rounded border border-slate-200 hover:bg-slate-100 cursor-pointer">
+                        <input type="checkbox" class="primary-chk h-4 w-4 text-slate-600 rounded" value="wheal">
+                        <span class="text-sm text-slate-700">Wheal (ลมพิษ)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Group 2: Secondary Lesion -->
+            <div class="mb-5">
+                <h3 class="text-sm font-bold text-slate-700 mb-2 border-l-4 border-slate-400 pl-2">2. Secondary Lesion (รอยโรคทุติยภูมิ)</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 checkbox-group">
+                    <label class="flex items-center space-x-2"><input type="checkbox" class="h-4 w-4 rounded border-slate-300"><span class="text-sm">Crust (สะเก็ด)</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" class="h-4 w-4 rounded border-slate-300"><span class="text-sm">Scale (ขุย)</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" class="h-4 w-4 rounded border-slate-300"><span class="text-sm">Erosion (แผลถลอก)</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" class="h-4 w-4 rounded border-slate-300"><span class="text-sm">Ulcer (แผลลึก)</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" class="h-4 w-4 rounded border-slate-300"><span class="text-sm">Fissure (รอยแยก)</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" class="h-4 w-4 rounded border-slate-300"><span class="text-sm">Excoriations (รอยเกา)</span></label>
+                    <label class="flex items-center space-x-2"><input type="checkbox" class="h-4 w-4 rounded border-slate-300"><span class="text-sm">Lichenification</span></label>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+                <!-- Group 3: Color -->
+                <div>
+                    <h3 class="text-sm font-bold text-slate-700 mb-2 border-l-4 border-red-400 pl-2">3. Color (สี)</h3>
+                    <div class="space-y-1 checkbox-group">
+                        <label class="flex items-center space-x-2"><input type="checkbox" class="h-4 w-4 rounded"><span class="text-sm">Erythematous (แดง)</span></label>
+                        <label class="flex items-center space-x-2"><input type="checkbox" class="h-4 w-4 rounded"><span class="text-sm">Purplish (ม่วง)</span></label>
+                        <label class="flex items-center space-x-2"><input type="checkbox" class="h-4 w-4 rounded"><span class="text-sm">Orange-reddish / Salmon (ส้มแดง)</span></label>
+                        <label class="flex items-center space-x-2"><input type="checkbox" class="h-4 w-4 rounded"><span class="text-sm">Brownish (น้ำตาล)</span></label>
+                        <label class="flex items-center space-x-2"><input type="checkbox" class="h-4 w-4 rounded"><span class="text-sm">Bluish (น้ำเงิน)</span></label>
+                    </div>
+                </div>
+
+                <!-- Group 4 & 5 -->
+                <div class="space-y-5">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-700 mb-2 border-l-4 border-indigo-400 pl-2">4. Shape & Borders</h3>
+                        <div class="space-y-1 checkbox-group flex flex-col">
+                            <label class="flex items-center space-x-2"><input type="checkbox" class="h-4 w-4 rounded"><span class="text-sm">Annular (วงแหวน)</span></label>
+                            <label class="flex items-center space-x-2"><input type="checkbox" class="h-4 w-4 rounded"><span class="text-sm">Linear (เส้นตรง)</span></label>
+                            <label class="flex items-center space-x-2"><input type="checkbox" class="h-4 w-4 rounded"><span class="text-sm">Target lesion (เป้าตาวัว)</span></label>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-700 mb-2 border-l-4 border-fuchsia-400 pl-2">5. Distribution (ภาพรวม)</h3>
+                        <div class="space-y-1 checkbox-group flex flex-col">
+                            <label class="flex items-center space-x-2"><input type="checkbox" class="h-4 w-4 rounded"><span class="text-sm">Clustered (กระจุกตัว)</span></label>
+                            <label class="flex items-center space-x-2"><input type="checkbox" class="h-4 w-4 rounded"><span class="text-sm">Generalized (กระจายทั่วตัว)</span></label>
+                            <label class="flex items-center space-x-2"><input type="checkbox" class="h-4 w-4 rounded"><span class="text-sm">Photodistributed (โดนแสงแดด)</span></label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-4 border-t border-slate-100">
+                <button type="button" onclick="goToStep(2)" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-xl shadow transition flex items-center space-x-2">
+                    <span>ถัดไป: คัดกรองภาวะฉุกเฉิน</span>
+                    <i class="fa-solid fa-arrow-right text-xs"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- ================= STEP 2: EMERGENCY TRIAGE ================= -->
+        <section id="step2" class="step-transition hidden bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex items-center space-x-3 mb-4 border-b border-slate-100 pb-3">
+                <div class="bg-red-100 text-red-600 p-2 rounded-lg">
+                    <i class="fa-solid fa-shield-virus text-lg"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900">Step 2: คัดกรองภาวะฉุกเฉิน / สัญญาณอันตราย (Red Flag Screening)</h2>
+                    <p class="text-xs text-slate-500">ประเมินภาวะแพ้ยารุนแรง หรือโรคผิวหนังลอกรุนแรงที่ต้องรักษาทันที</p>
+                </div>
+            </div>
+
+            <p class="text-sm font-medium text-slate-700 mb-3">ผู้ป่วยมีอาการหรือสัญญาณเตือนดังต่อไปนี้หรือไม่? (เลือกได้มากกว่า 1 ข้อ):</p>
+
+            <div class="space-y-3 mb-6">
+                <label class="flex items-start space-x-3 p-3.5 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer transition">
+                    <input type="checkbox" class="red-flag-check mt-1 h-4 w-4 text-red-600 focus:ring-red-500 border-slate-300 rounded" value="mucous">
+                    <div>
+                        <span class="text-sm font-semibold text-slate-800 block">มีแผลถลอก/ตุ่มน้ำ บริเวณเยื่อบุผิว (Mucous Membrane Involvement)</span>
+                        <span class="text-xs text-slate-500">เช่น เยื่อบุตาอักเสบ/แดง, มีแผลแสบในช่องปาก/ริมฝีปากลอก, หรืออวัยวะเพศ</span>
+                    </div>
+                </label>
+
+                <label class="flex items-start space-x-3 p-3.5 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer transition">
+                    <input type="checkbox" class="red-flag-check mt-1 h-4 w-4 text-red-600 focus:ring-red-500 border-slate-300 rounded" value="systemic">
+                    <div>
+                        <span class="text-sm font-semibold text-slate-800 block">มีอาการป่วยตามระบบเฉียบพลัน (Acute Systemic Illness)</span>
+                        <span class="text-xs text-slate-500">เช่น ไข้สูง, อ่อนเพลียอย่างรุนแรง, ความดันโลหิตต่ำ, ปวดเมื่อยตัวรุนแรง</span>
+                    </div>
+                </label>
+
+                <label class="flex items-start space-x-3 p-3.5 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer transition">
+                    <input type="checkbox" class="red-flag-check mt-1 h-4 w-4 text-red-600 focus:ring-red-500 border-slate-300 rounded" value="sloughing">
+                    <div>
+                        <span class="text-sm font-semibold text-slate-800 block">ผิวหนังหลุดลอกเป็นแผ่น หรือเจ็บผิวหนังอย่างรุนแรง (Skin Sloughing / Nikolsky's sign positive)</span>
+                        <span class="text-xs text-slate-500">ผิวหนังหลุดง่ายเมื่อถูเบาๆ หรือมีพื้นที่ผิวหนังลอกกว้างคล้ายน้ำร้อนลวก</span>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Emergency Warning Output Box -->
+            <div id="redFlagAlert" class="hidden mb-6 bg-red-50 border-2 border-red-500 p-4 rounded-xl text-red-900">
+                <div class="flex items-center space-x-2 text-red-700 font-bold mb-1">
+                    <i class="fa-solid fa-triangle-exclamation text-xl animate-bounce"></i>
+                    <span>🚨 ข้อควรระวังสูง: สงสัยภาวะแพ้ยารุนแรง (SCARs / Medical Emergency)</span>
+                </div>
+                <p class="text-xs text-red-800 mb-2">
+                    อาการที่เลือกเข้าข่ายกลุ่มโรคอันตรายรุนแรง เช่น <strong>Stevens-Johnson Syndrome (SJS)</strong>, <strong>Toxic Epidermal Necrolysis (TEN)</strong> หรือ <strong>Staphylococcal Scalded Skin Syndrome (SSSS)</strong>
+                </p>
+                <div class="bg-white p-3 rounded-lg border border-red-200 text-xs text-slate-700 space-y-1">
+                    <p class="font-semibold text-red-700">คำแนะนำเบื้องต้นด่วน:</p>
+                    <p>• หยุดยาที่ต้องสงสัยย้อนหลัง 1-4 สัปดาห์ทันที</p>
+                    <p>• พิจารณารับผู้ป่วยไว้ในโรงพยาบาล (Admit) / ส่งต่อผู้เชี่ยวชาญด้านผิวหนัง หรือ ICU/Burn unit</p>
+                    <p>• รักษาสมดุลสารน้ำและเกลือแร่ เฝ้าระวังการติดเชื้อแทรกซ้อน</p>
+                </div>
+            </div>
+
+            <div class="flex justify-between">
+                <button onclick="goToStep(1)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-5 py-2.5 rounded-xl transition flex items-center space-x-2">
+                    <i class="fa-solid fa-arrow-left text-xs"></i>
+                    <span>ย้อนกลับ</span>
+                </button>
+                <button onclick="goToStep(3)" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-xl shadow transition flex items-center space-x-2">
+                    <span>ถัดไป: เลือกการกระจายตัวผื่น</span>
+                    <i class="fa-solid fa-arrow-right text-xs"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- ================= STEP 3: DISTRIBUTION ================= -->
+        <section id="step3" class="step-transition hidden bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex items-center space-x-3 mb-4 border-b border-slate-100 pb-3">
+                <div class="bg-blue-100 text-blue-600 p-2 rounded-lg">
+                    <i class="fa-solid fa-chart-pie text-lg"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900">Step 3: ลักษณะการกระจายตัวของผื่น (Distribution)</h2>
+                    <p class="text-xs text-slate-500">เลือกรูปแบบการกระจายตัวของตุ่มน้ำบนร่างกาย</p>
+                </div>
+            </div>
+
+            <div class="bg-blue-50 border-l-4 border-blue-600 p-3.5 mb-6 rounded-r-xl">
+                <h3 class="text-base md:text-lg font-bold text-blue-950 flex items-center space-x-2">
+                    <i class="fa-solid fa-circle-question text-blue-600"></i>
+                    <span>ตุ่มน้ำกระจายตัวในลักษณะใด?</span>
+                </h3>
+                <p class="text-xs text-blue-700/80 mt-0.5">โปรดเลือกลักษณะการกระจายตัวของผื่นเพื่อประเมินในขั้นตอนถัดไป</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <!-- Localized Card -->
+                <div onclick="selectDistribution('localized')" id="card-localized" class="card-selectable border-2 border-slate-200 p-5 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="bg-sky-100 text-sky-800 text-xs font-bold px-2.5 py-1 rounded-md">Localized</span>
+                            <i class="fa-solid fa-location-dot text-sky-500 text-xl"></i>
+                        </div>
+                        <h3 class="font-bold text-slate-800 text-base mb-1">เกิดขึ้นเฉพาะที่ / บริเวณจำกัด</h3>
+                        <p class="text-xs text-slate-500 leading-relaxed">
+                            ตุ่มน้ำขึ้นเฉพาะบางส่วนของร่างกาย เช่น เฉพาะมือ-เท้า, เฉพาะแถบประสาท, บริเวณโดนแดด หรือขึ้นเป็นกลุ่มก้อนเฉพาะจุด
+                        </p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-sky-600 font-semibold">
+                        <span>เลือก localized</span>
+                        <i class="fa-solid fa-circle-chevron-right"></i>
+                    </div>
+                </div>
+
+                <!-- Generalized Card -->
+                <div onclick="selectDistribution('generalized')" id="card-generalized" class="card-selectable border-2 border-slate-200 p-5 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2.5 py-1 rounded-md">Generalized</span>
+                            <i class="fa-solid fa-globe text-indigo-500 text-xl"></i>
+                        </div>
+                        <h3 class="font-bold text-slate-800 text-base mb-1">กระจายทั่วตัว / บริเวณกว้าง</h3>
+                        <p class="text-xs text-slate-500 leading-relaxed">
+                            ตุ่มน้ำขึ้นกระจายหลายตำแหน่งทั่วร่างกาย ไม่ได้จำกัดอยู่เพียงบริเวณใดบริเวณหนึ่ง
+                        </p>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-indigo-600 font-semibold">
+                        <span>เลือก generalized</span>
+                        <i class="fa-solid fa-circle-chevron-right"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-between">
+                <button onclick="goToStep(2)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-5 py-2.5 rounded-xl transition flex items-center space-x-2">
+                    <i class="fa-solid fa-arrow-left text-xs"></i>
+                    <span>ย้อนกลับ</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- ================= STEP 4A: LOCALIZED SUB-CATEGORIES ================= -->
+        <section id="step4_localized" class="step-transition hidden bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex items-center space-x-3 mb-4 border-b border-slate-100 pb-3">
+                <div class="bg-sky-100 text-sky-600 p-2 rounded-lg">
+                    <i class="fa-solid fa-shapes text-lg"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900">Step 4: รูปแบบตำแหน่ง/การเรียงตัวเฉพาะที่</h2>
+                    <p class="text-xs text-slate-500">เลือกลักษณะการกระจายตัวของ Localized blister</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+                <div onclick="selectLocalizedSub('grouped')" id="sub-grouped" class="card-selectable border border-slate-200 p-4 rounded-xl">
+                    <div class="text-blue-600 mb-2"><i class="fa-solid fa-braille text-2xl"></i></div>
+                    <h4 class="font-bold text-sm text-slate-800">Grouped</h4>
+                    <p class="text-xs text-slate-500 mt-1">กระจุกตัวเป็นกลุ่มก้อนเล็กๆ</p>
+                </div>
+
+                <div onclick="selectLocalizedSub('dependent')" id="sub-dependent" class="card-selectable border border-slate-200 p-4 rounded-xl">
+                    <div class="text-blue-600 mb-2"><i class="fa-solid fa-arrow-down-to-line text-2xl"></i></div>
+                    <h4 class="font-bold text-sm text-slate-800">Dependent areas</h4>
+                    <p class="text-xs text-slate-500 mt-1">บริเวณส่วนต่ำ / จุดรับแรงกดทับ เช่น ขา ข้อเท้า</p>
+                </div>
+
+                <div onclick="selectLocalizedSub('hands_feet')" id="sub-hands_feet" class="card-selectable border border-slate-200 p-4 rounded-xl">
+                    <div class="text-blue-600 mb-2 flex items-center space-x-1">
+                        <i class="fa-solid fa-hand text-xl"></i>
+                        <i class="fa-solid fa-shoe-prints text-xl"></i>
+                    </div>
+                    <h4 class="font-bold text-sm text-slate-800">Hands or feet</h4>
+                    <p class="text-xs text-slate-500 mt-1">เฉพาะบริเวณฝ่ามือ ฝ่าเท้า หรือนิ้ว</p>
+                </div>
+
+                <div onclick="selectLocalizedSub('photodistributed')" id="sub-photodistributed" class="card-selectable border border-slate-200 p-4 rounded-xl">
+                    <div class="text-blue-600 mb-2"><i class="fa-solid fa-person-rays text-2xl"></i></div>
+                    <h4 class="font-bold text-sm text-slate-800">Photodistributed</h4>
+                    <p class="text-xs text-slate-500 mt-1">บริเวณโดนแสงแดด เช่น ใบหน้า คอ แขนด้านนอก</p>
+                </div>
+
+                <div onclick="selectLocalizedSub('dermatomal')" id="sub-dermatomal" class="card-selectable border border-slate-200 p-4 rounded-xl">
+                    <div class="text-blue-600 mb-2"><i class="fa-solid fa-bolt text-2xl"></i></div>
+                    <h4 class="font-bold text-sm text-slate-800">Dermatomal</h4>
+                    <p class="text-xs text-slate-500 mt-1">เรียงตามแนวเส้นประสาทซีกใดซีกหนึ่ง</p>
+                </div>
+
+                <div onclick="selectLocalizedSub('linear')" id="sub-linear" class="card-selectable border border-slate-200 p-4 rounded-xl">
+                    <div class="text-blue-600 mb-2"><i class="fa-solid fa-grip-lines text-2xl"></i></div>
+                    <h4 class="font-bold text-sm text-slate-800">Linear</h4>
+                    <p class="text-xs text-slate-500 mt-1">เป็นเส้นตรง จากการขีดข่วนหรือสัมผัส</p>
+                </div>
+            </div>
+
+            <div class="flex justify-between">
+                <button onclick="goToStep(3)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-5 py-2.5 rounded-xl transition flex items-center space-x-2">
+                    <i class="fa-solid fa-arrow-left text-xs"></i>
+                    <span>ย้อนกลับ</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- ================= STEP 4B: GENERALIZED SUB-CATEGORIES ================= -->
+        <section id="step4_generalized" class="step-transition hidden bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex items-center space-x-3 mb-4 border-b border-slate-100 pb-3">
+                <div class="bg-indigo-100 text-indigo-600 p-2 rounded-lg">
+                    <i class="fa-solid fa-circle-dot text-lg"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900">Step 4: ลักษณะทางกายภาพของตุ่มน้ำ (Blister Type)</h2>
+                    <p class="text-xs text-slate-500">เลือกประเภทความตึงและขนาดของตุ่มน้ำ</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div onclick="selectGeneralizedSub('flaccid')" id="gen-flaccid" class="card-selectable border-2 border-slate-200 p-5 rounded-2xl">
+                    <div class="text-purple-600 mb-3"><i class="fa-solid fa-droplet-slash text-3xl"></i></div>
+                    <h3 class="font-bold text-slate-800 text-base">Flaccid bullae / Skin sloughing</h3>
+                    <p class="text-xs text-slate-500 mt-2 leading-relaxed">
+                        ตุ่มน้ำพองนิ่ม แตกง่าย ผิวหนังเปื่อยลอกหลุดตื้นๆ ได้ง่าย (Positive Nikolsky sign)
+                    </p>
+                </div>
+
+                <div onclick="selectGeneralizedSub('tense')" id="gen-tense" class="card-selectable border-2 border-slate-200 p-5 rounded-2xl">
+                    <div class="text-blue-600 mb-3"><i class="fa-solid fa-circle text-3xl"></i></div>
+                    <h3 class="font-bold text-slate-800 text-base">Tense bullae</h3>
+                    <p class="text-xs text-slate-500 mt-2 leading-relaxed">
+                        ตุ่มน้ำขนาดใหญ่ พองเต่ง แข็งตึง แตกยาก ผิวหน้าตุ่มหนา
+                    </p>
+                </div>
+
+                <div onclick="selectGeneralizedSub('vesicles')" id="gen-vesicles" class="card-selectable border-2 border-slate-200 p-5 rounded-2xl">
+                    <div class="text-teal-600 mb-3"><i class="fa-solid fa-ellipsis text-3xl"></i></div>
+                    <h3 class="font-bold text-slate-800 text-base">Vesicles</h3>
+                    <p class="text-xs text-slate-500 mt-2 leading-relaxed">
+                        ตุ่มน้ำใสขนาดเล็ก (&lt; 0.5 - 1 cm) ขึ้นกระจายทั่วไป
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex justify-between">
+                <button onclick="goToStep(3)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-5 py-2.5 rounded-xl transition flex items-center space-x-2">
+                    <i class="fa-solid fa-arrow-left text-xs"></i>
+                    <span>ย้อนกลับ</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- ================= STEP 5: ASSOCIATED FEATURES ================= -->
+        <section id="step5_features" class="step-transition hidden bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex items-center space-x-3 mb-4 border-b border-slate-100 pb-3">
+                <div class="bg-purple-100 text-purple-600 p-2 rounded-lg">
+                    <i class="fa-solid fa-list-check text-lg"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900">Step 5: อาการร่วมทางคลินิก (Associated Clinical Features)</h2>
+                    <p class="text-xs text-slate-500">เลือกอาการร่วมเพิ่มเติมเพื่อระบุโรคที่เข้าข่ายแม่นยำขึ้น</p>
+                </div>
+            </div>
+
+            <p id="featureQuestionTitle" class="text-sm font-medium text-slate-700 mb-3">โปรดเลือกอาการร่วมที่ตรวจพบ:</p>
+
+            <div id="featureOptionsContainer" class="space-y-3 mb-6">
+                <!-- Dynamically Inserted -->
+            </div>
+
+            <div class="flex justify-between">
+                <button onclick="backToStep4()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-5 py-2.5 rounded-xl transition flex items-center space-x-2">
+                    <i class="fa-solid fa-arrow-left text-xs"></i>
+                    <span>ย้อนกลับ</span>
+                </button>
+                <button onclick="calculateResult()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-6 py-2.5 rounded-xl shadow transition flex items-center space-x-2">
+                    <i class="fa-solid fa-stethoscope"></i>
+                    <span>ประมวลผลการวินิจฉัย</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- ================= RESULT DISPLAY SECTION ================= -->
+        <section id="resultSection" class="step-transition hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="bg-emerald-100 text-emerald-600 p-3 rounded-xl">
+                            <i class="fa-solid fa-clipboard-check text-2xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-slate-900">ผลการวิเคราะห์และประเมินโรค (Differential Diagnosis)</h2>
+                            <p class="text-xs text-slate-500">วิเคราะห์ตามแนวทางการวินิจฉัย Cutaneous Blisters Checklist</p>
+                        </div>
+                    </div>
+                    <button onclick="resetAssessment()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-medium">
+                        ประเมินเคสใหม่
+                    </button>
+                </div>
+
+                <div class="mb-4 bg-slate-50 p-3 rounded-xl text-xs text-slate-600 flex items-center space-x-2">
+                    <span class="font-bold text-slate-800">เส้นทางการประเมิน:</span>
+                    <span id="summaryPath" class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-medium">Distribution -> Category</span>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-sm font-bold text-slate-700 mb-3 flex items-center space-x-2">
+                        <i class="fa-solid fa-notes-medical text-blue-600"></i>
+                        <span>รายชื่อโรคที่ต้องนึกถึง (Consider Diagnoses):</span>
+                    </h3>
+                    <div id="diseaseResultList" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-900 space-y-2">
+                    <h4 class="font-bold text-sm text-blue-800 flex items-center space-x-2">
+                        <i class="fa-solid fa-vial"></i>
+                        <span>การส่งตรวจทางห้องปฏิบัติการเพื่อยืนยัน (Recommended Investigations)</span>
+                    </h4>
+                    <ul class="list-disc list-inside space-y-1 text-slate-700">
+                        <li><strong>Skin Biopsy for H&E:</strong> ตัดชิ้นเนื้อเพื่อดูลักษณะการแยกชั้นของผิวหนัง (Subcorneal, Intraepidermal, or Subepidermal split)</li>
+                        <li><strong>Direct Immunofluorescence (DIF):</strong> ตรวจดูการสะสมของอิมมูโนโกลบูลิน (IgG, IgA, C3) สำหรับโรค Autoimmune Bullous Diseases</li>
+                        <li><strong>Tzanck Smear / PCR for HSV/VZV:</strong> สำหรับตุ่มน้ำสงสัยจากการติดเชื้อไวรัส (Herpes viruses)</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-12 py-4">
+        <div class="max-w-6xl mx-auto px-4 text-center text-xs text-slate-400">
+            Cutaneous Blisters Assessment Tool &copy; 2026 • ออกแบบตาม Clinical Algorithm การแยกโรคตุ่มน้ำ
+        </div>
+    </footer>
+
+    <!-- ================= MODAL: RASH IMAGE REFERENCE ================= -->
+    <div id="galleryModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+            <!-- Modal Header -->
+            <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-regular fa-image text-blue-600 text-lg"></i>
+                    <h3 class="font-bold text-slate-800 text-base">สรุปรูปภาพตัวอย่างลักษณะผื่น (Summary: The Basic Skin Lesion)</h3>
+                </div>
+                <button onclick="closeGalleryModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="p-6 overflow-y-auto space-y-6">
+                <!-- Custom Upload Section -->
+                <div class="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-4 text-center bg-slate-50 transition cursor-pointer" onclick="document.getElementById('userImageInput').click()">
+                    <i class="fa-solid fa-cloud-arrow-up text-3xl text-slate-400 mb-2"></i>
+                    <p class="text-sm font-semibold text-slate-700">คลิกเพื่ออัปโหลดรูปผื่นผู้ป่วยสำหรับเปรียบเทียบ</p>
+                    <p class="text-xs text-slate-400 mt-1">รองรับไฟล์ JPG, PNG (รูปภาพจะถูกใช้เปรียบเทียบในเซสชันนี้เท่านั้น)</p>
+                    <input type="file" id="userImageInput" accept="image/*" class="hidden" onchange="handleUserImageUpload(event)">
+                </div>
+
+                <!-- Preview Uploaded Image Container -->
+                <div id="uploadedPreviewContainer" class="hidden bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                    <p class="text-xs font-bold text-blue-800 mb-2">รูปภาพที่ใส่อัปโหลดแล้ว:</p>
+                    <div class="flex items-center space-x-3">
+                        <img id="uploadedImgPreview" src="" alt="Uploaded Rash" class="h-20 w-20 object-cover rounded-lg border">
+                        <button onclick="clearUploadedImage()" class="text-xs text-red-600 hover:underline">ลบรูปภาพนี้</button>
+                    </div>
+                </div>
+
+                <!-- Preset Sample Rash Gallery -->
+                <div>
+                    <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">รูปภาพตัวอย่างตามลักษณะทางคลินิก (Preset Samples)</h4>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                            <div class="h-36 bg-slate-200 flex items-center justify-center relative overflow-hidden">
+                                <img src="https://placehold.co/600x400/fee2e2/991b1b?text=Flaccid+Bullae+(SJS/TEN)" alt="Flaccid Bullae" class="w-full h-full object-cover">
+                                <span class="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded">Severe / Red Flag</span>
+                            </div>
+                            <div class="p-3">
+                                <h5 class="text-xs font-bold text-slate-800">Flaccid Bullae / Sloughing</h5>
+                                <p class="text-[11px] text-slate-500 mt-1">ตุ่มน้ำพองนิ่ม หลุดลอกง่าย สัมพันธ์กับ SJS/TEN หรือ Pemphigus</p>
+                            </div>
+                        </div>
+
+                        <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                            <div class="h-36 bg-slate-200 flex items-center justify-center relative overflow-hidden">
+                                <img src="https://placehold.co/600x400/e0f2fe/075985?text=Tense+Bullae+(Bullous+Pemphigoid)" alt="Tense Bullae" class="w-full h-full object-cover">
+                            </div>
+                            <div class="p-3">
+                                <h5 class="text-xs font-bold text-slate-800">Tense Bullae</h5>
+                                <p class="text-[11px] text-slate-500 mt-1">ตุ่มน้ำพองเต่ง ตึง แข็ง พบใน Bullous Pemphigoid</p>
+                            </div>
+                        </div>
+
+                        <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                            <div class="h-36 bg-slate-200 flex items-center justify-center relative overflow-hidden">
+                                <img src="https://placehold.co/600x400/fef3c7/92400e?text=Dermatomal+Grouped+(Herpes+Zoster)" alt="Herpes Zoster" class="w-full h-full object-cover">
+                            </div>
+                            <div class="p-3">
+                                <h5 class="text-xs font-bold text-slate-800">Dermatomal / Grouped Vesicles</h5>
+                                <p class="text-[11px] text-slate-500 mt-1">ตุ่มน้ำใสรวมกันเป็นกลุ่มตามแนวเส้นประสาท (Herpes Zoster / งูสวัด)</p>
+                            </div>
+                        </div>
+
+                        <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                            <div class="h-36 bg-slate-200 flex items-center justify-center relative overflow-hidden">
+                                <img src="https://placehold.co/600x400/f3e8ff/6b21a8?text=Photodistributed+Blisters" alt="Photodistributed" class="w-full h-full object-cover">
+                            </div>
+                            <div class="p-3">
+                                <h5 class="text-xs font-bold text-slate-800">Photodistributed Blisters</h5>
+                                <p class="text-[11px] text-slate-500 mt-1">ตุ่มน้ำบริเวณสัมผัสแสงแดด เช่น Sunburn, Phototoxic reaction</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center text-xs text-slate-500">
+                <span>ที่มา: Med Clin N Am 94 (2010) 711-725</span>
+                <button onclick="closeGalleryModal()" class="bg-slate-800 text-white px-5 py-2 rounded-xl font-medium hover:bg-slate-900 transition">
+                    ปิดหน้าต่าง
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
+    <script>
+        // State Management
+        let currentStep = 1;
+        let selectedDistribution = null;
+        let selectedSubCategory = null;
+        let selectedFeatures = [];
+
+        // Database Mapping
+        const DIAGNOSIS_DATABASE = {
+            localized: {
+                grouped: [
+                    { name: "HSV (Herpes Simplex Virus)", risk: "Moderate", note: "ตุ่มน้ำใสกระจุกตัว มักพบริมฝีปากหรืออวัยวะเพศ" },
+                    { name: "Herpes Zoster (งูสวัด)", risk: "Moderate", note: "ตุ่มน้ำรวมกลุ่ม มักเรียงตามแถบเส้นประสาท" },
+                    { name: "Mild Dermatitis Herpetiformis", risk: "Low", note: "ตุ่มน้ำใสคันมาก มักสัมพันธ์กับ Gluten hypersensitivity" }
+                ],
+                dependent: [
+                    { name: "Coma Blisters", risk: "Low", note: "เกิดจากการกดทับเป็นเวลานานในผู้ป่วยไม่รู้สึกตัว" },
+                    { name: "Bullous Disease of Diabetes", risk: "Low", note: "ตุ่มน้ำไร้การอักเสบในผู้ป่วยเบาหวาน" },
+                    { name: "Bullous LCV (Leukocytoclastic Vasculitis)", risk: "High", note: "เส้นเลือดอักเสบแพ้ยา/ภูมิคุ้มกัน ควรเฝ้าระวัง" },
+                    { name: "Edema Blisters", risk: "Low", note: "ตุ่มน้ำจากภาวะบวมน้ำรุนแรงบริเวณส่วนต่ำ" }
+                ],
+                hands_feet: [
+                    { name: "Acute Palmoplantar Eczema (Dyshidrosis)", risk: "Low", note: "ตุ่มน้ำใสคันมากบริเวณข้างนิ้ว ฝ่ามือ ฝ่าเท้า" },
+                    { name: "Dermatophytosis (Bullous Tinea)", risk: "Low", note: "การติดเชื้อราที่ฝ่าเท้าอย่างรุนแรง" },
+                    { name: "Friction Blisters", risk: "Low", note: "เกิดจากการเสียดสี เช่น รองเท้ากัด" },
+                    { name: "Sucking Blisters", risk: "Low", note: "พบในทารกจากการดูดนิ้ว" },
+                    { name: "Erythema Multiforme (EM)", risk: "Moderate", note: "ผื่นเป้าล้อม (Targetoid lesion) มักเกิดหลังติดเชื้อ HSV" },
+                    { name: "Epidermolysis Bullosa Simplex", risk: "Low-Moderate", note: "โรคทางพันธุกรรม ผิวเปราะบางแตกง่ายเมื่อถูกถู" }
+                ],
+                photodistributed: [
+                    { name: "Polymorphous Light Eruption (PMLE)", risk: "Low", note: "ผื่นแพ้แสงแดดแบบหลากหลายรูปแบบ" },
+                    { name: "Blistering Porphyrias / Pseudoporphyria", risk: "Moderate", note: "ความผิดปกติของเมตาบอลิซึม หรือยาบางชนิดกระตุ้นแสง" },
+                    { name: "Sunburn", risk: "Low", note: "ผิวหนังไหม้พองจากแสงแดดจัด" },
+                    { name: "Phototoxic Reaction", risk: "Low-Moderate", note: "ปฏิกิริยาแพ้แดดร่วมกับการทานยาบางชนิด (เช่น Tetracycline)" }
+                ],
+                dermatomal: [
+                    { name: "Herpes Zoster (งูสวัด)", risk: "Moderate", note: "ลักษณะเฉพาะ: ตุ่มน้ำตามแนวเส้นประสาทซีกเดียว" }
+                ],
+                linear: [
+                    { name: "Contact Dermatitis (ผื่นสัมผัส)", risk: "Low", note: "สัมผัสสารก่อการระคายเคือง/สารแพ้เป็นเส้น" },
+                    { name: "Phytophotodermatitis", risk: "Low", note: "สัมผัสพืชโดนสารเคมีร่วมกับแสงแดด (เช่น น้ำมะนาว)" },
+                    { name: "Friction Blisters", risk: "Low", note: "รอยขีดข่วนเสียดสีเป็นเส้น" }
+                ]
+            },
+            generalized: {
+                flaccid: {
+                    mucous: [
+                        { name: "Stevens-Johnson Syndrome (SJS)", risk: "High (Red Flag)", note: "ผื่นแพ้ยารุนแรง มีเยื่อบุตา/ปากอักเสบร่วมด้วย" },
+                        { name: "Toxic Epidermal Necrolysis (TEN)", risk: "Critical (Red Flag)", note: "ผิวหนังลอกรุนแรง >30% BSA อันตรายถึงชีวิต" },
+                        { name: "Pemphigus Vulgaris", risk: "High", note: "โรคภูมิคุ้มกันต่อต้านตนเอง ตุ่มนิ่มแตกเป็นแผลแสบในปาก" },
+                        { name: "Paraneoplastic Pemphigus", risk: "High", note: "ตุ่มน้ำพองร่วมกับโรคมะเร็งซ่อนเร้น" }
+                    ],
+                    superficial: [
+                        { name: "Pemphigus Foliaceus", risk: "Moderate", note: "ตุ่มน้ำตื้นมาก แตกเป็นสะเก็ดคล้ายแผ่นใบไม้ ไม่พบแผลในปาก" },
+                        { name: "Staphylococcal Scalded Skin Syndrome (SSSS)", risk: "High", note: "การติดเชื้อสแตปฟิโลคอกคัสสร้างสารพิษ ทำให้ผิวลอกตื้น (มักพบในเด็ก)" }
+                    ],
+                    systemic: [
+                        { name: "Stevens-Johnson Syndrome (SJS)", risk: "High (Red Flag)", note: "อาการป่วยทางระบบ ร่วมกับแผลเยื่อบุและตุ่มพอง" },
+                        { name: "Toxic Epidermal Necrolysis (TEN)", risk: "Critical (Red Flag)", note: "ภาวะฉุกเฉินระดับสูง" },
+                        { name: "Staphylococcal Scalded Skin Syndrome (SSSS)", risk: "High", note: "ไข้สูงและผิวลอกในเด็กเล็ก" }
+                    ],
+                    default: [
+                        { name: "Pemphigus Group", risk: "High", note: "สงสัยโรคกลุ่ม Pemphigus แนะนำส่งตรวจ Biopsy" },
+                        { name: "SJS / TEN early stage", risk: "High", note: "เฝ้าระวังอาการแพ้ยารุนแรง" }
+                    ]
+                },
+                tense: {
+                    grouped: [
+                        { name: "Linear IgA Bullous Dermatosis", risk: "Moderate", note: "ตุ่มน้ำพองเรียงเป็นวงคล้ายสร้อยไข่มุก (Crown of jewels)" },
+                        { name: "Dermatitis Herpetiformis", risk: "Moderate", note: "ตุ่มตึงกระจุก คันมาก สัมพันธ์กับ Gluten" }
+                    ],
+                    urticarial: [
+                        { name: "Bullous Pemphigoid", risk: "High", note: "พบบ่อยในผู้สูงอายุ ผื่นลมพิษนำมาก่อนตุ่มน้ำพองเต่ง" },
+                        { name: "Pemphigoid Gestationis", risk: "Moderate-High", note: "ตุ่มน้ำพองเต่งในหญิงตั้งครรภ์ (ไตรมาส 2-3)" },
+                        { name: "Epidermolysis Bullosa Acquisita", risk: "Moderate", note: "ตุ่มน้ำเต่งในตำแหน่งกระทบกระแทก" }
+                    ],
+                    scarring: [
+                        { name: "Epidermolysis Bullosa Acquisita (EBA)", risk: "Moderate", note: "ทิ้งรอยแผลเป็นและ Milia (สิวหิน)" },
+                        { name: "Mucous Membrane Pemphigoid", risk: "High", note: "เกิดแผลเป็นดึงรั้งตามเยื่อบุตา/ช่องปาก" }
+                    ],
+                    mucous: [
+                        { name: "Bullous Pemphigoid", risk: "High", note: "บางรายอาจพบแผลเยื่อบุเล็กน้อย" },
+                        { name: "Mucous Membrane Pemphigoid", risk: "High", note: "เน้นรอยโรคที่เยื่อบุรุนแรง" },
+                        { name: "Paraneoplastic Pemphigus", risk: "High", note: "สัมพันธ์กับโรคมะเร็ง" },
+                        { name: "Linear IgA Bullous Dermatosis", risk: "Moderate", note: "พบแผลเยื่อบุได้" },
+                        { name: "Epidermolysis Bullosa Acquisita", risk: "Moderate", note: "พบเยื่อบุตา/ปากได้" },
+                        { name: "Bullous Systemic Lupus Erythematosus (BSLE)", risk: "High", note: "ตุ่มน้ำพองในผู้ป่วยโรคภูมิแพ้ตัวเอง SLE" }
+                    ],
+                    default: [
+                        { name: "Bullous Pemphigoid", risk: "High", note: "โรคตุ่มน้ำพองเต่งที่พบได้บ่อยที่สุดในผู้สูงอายุ" },
+                        { name: "Epidermolysis Bullosa Acquisita", risk: "Moderate", note: "ควรส่งตรวจ DIF ยืนยัน" }
+                    ]
+                },
+                vesicles: {
+                    systemic: [
+                        { name: "Disseminated HSV", risk: "High", note: "การติดเชื้อเริมกระจายทั่วตัวในผู้ภูมิคุ้มกันต่ำ" },
+                        { name: "Disseminated VZV (Varicella/Zoster)", risk: "High", note: "โรคอีสุกใส หรือ งูสวัดกระจายทั่วตัว" },
+                        { name: "Sweet Syndrome", risk: "Moderate-High", note: "Acute febrile neutrophilic dermatosis มีไข้และตุ่มน้ำ/ตุ่มโหนดแดง" }
+                    ],
+                    pruritus: [
+                        { name: "Dermatitis Herpetiformis", risk: "Moderate", note: "อาการคันรุนแรงมาก เป็นลักษณะเด่น" }
+                    ],
+                    default: [
+                        { name: "Miliaria Crystallina", risk: "Low", note: "ผดแดด/ตุ่มน้ำใสขนาดเล็กมาก แตกง่าย ไร้การอักเสบ" },
+                        { name: "Pemphigus Foliaceus", risk: "Moderate", note: "ตุ่มน้ำใสระยะแรก" },
+                        { name: "Dermatitis Herpetiformis", risk: "Moderate", note: "ตุ่มน้ำใสคันมาก" },
+                        { name: "Disseminated Viral Infection", risk: "High", note: "การติดเชื้อไวรัสกระจายตัว" }
+                    ]
+                }
+            }
+        };
+
+        // Initialize Red Flag listeners
+        document.querySelectorAll('.red-flag-check').forEach(chk => {
+            chk.addEventListener('change', () => {
+                const checked = document.querySelectorAll('.red-flag-check:checked').length > 0;
+                const alertBox = document.getElementById('redFlagAlert');
+                if (checked) {
+                    alertBox.classList.remove('hidden');
+                } else {
+                    alertBox.classList.add('hidden');
+                }
+            });
+        });
+
+        // Navigation Controller
+        function goToStep(step) {
+            currentStep = step;
+            updateProgressBar();
+
+            document.getElementById('step1').classList.add('hidden');
+            document.getElementById('step2').classList.add('hidden');
+            document.getElementById('step3').classList.add('hidden');
+            document.getElementById('step4_localized').classList.add('hidden');
+            document.getElementById('step4_generalized').classList.add('hidden');
+            document.getElementById('step5_features').classList.add('hidden');
+            document.getElementById('resultSection').classList.add('hidden');
+
+            if (step === 1) {
+                document.getElementById('step1').classList.remove('hidden');
+            } else if (step === 2) {
+                document.getElementById('step2').classList.remove('hidden');
+            } else if (step === 3) {
+                document.getElementById('step3').classList.remove('hidden');
+            } else if (step === 4) {
+                if (selectedDistribution === 'localized') {
+                    document.getElementById('step4_localized').classList.remove('hidden');
+                } else if (selectedDistribution === 'generalized') {
+                    document.getElementById('step4_generalized').classList.remove('hidden');
+                }
+            } else if (step === 5) {
+                document.getElementById('step5_features').classList.remove('hidden');
+            } else if (step === 6) {
+                document.getElementById('resultSection').classList.remove('hidden');
+            }
+        }
+
+        function updateProgressBar() {
+            const bar = document.getElementById('progressBar');
+            const indicator = document.getElementById('stepIndicator');
+            const percent = document.getElementById('progressPercent');
+
+            let pct = 20;
+            let text = "ขั้นตอน 1 จาก 5: ประเมินรอยโรคพื้นฐาน";
+
+            if (currentStep === 2) {
+                pct = 40;
+                text = "ขั้นตอน 2 จาก 5: คัดกรองอาการฉุกเฉิน (Red Flag)";
+            } else if (currentStep === 3) {
+                pct = 60;
+                text = "ขั้นตอน 3 จาก 5: ลักษณะการกระจายตัว (Distribution)";
+            } else if (currentStep === 4) {
+                pct = 80;
+                text = "ขั้นตอน 4 จาก 5: จำแนกประเภทผื่น";
+            } else if (currentStep === 5) {
+                pct = 90;
+                text = "ขั้นตอน 5 จาก 5: ประเมินอาการร่วม";
+            } else if (currentStep === 6) {
+                pct = 100;
+                text = "การประมวลผลเสร็จสมบูรณ์";
+            }
+
+            bar.style.width = pct + '%';
+            percent.innerText = pct + '%';
+            indicator.innerText = text;
+        }
+
+        function selectDistribution(type) {
+            selectedDistribution = type;
+            document.getElementById('card-localized').classList.remove('selected');
+            document.getElementById('card-generalized').classList.remove('selected');
+
+            document.getElementById(`card-${type}`).classList.add('selected');
+
+            setTimeout(() => {
+                goToStep(4);
+            }, 200);
+        }
+
+        function selectLocalizedSub(subType) {
+            selectedSubCategory = subType;
+            document.querySelectorAll('#step4_localized .card-selectable').forEach(el => el.classList.remove('selected'));
+            document.getElementById(`sub-${subType}`).classList.add('selected');
+
+            setTimeout(() => {
+                calculateResult();
+            }, 200);
+        }
+
+        function selectGeneralizedSub(subType) {
+            selectedSubCategory = subType;
+            document.querySelectorAll('#step4_generalized .card-selectable').forEach(el => el.classList.remove('selected'));
+            document.getElementById(`gen-${subType}`).classList.add('selected');
+
+            renderStep5Options(subType);
+            
+            setTimeout(() => {
+                goToStep(5);
+            }, 200);
+        }
+
+        function renderStep5Options(subType) {
+            const container = document.getElementById('featureOptionsContainer');
+            container.innerHTML = '';
+
+            let options = [];
+
+            if (subType === 'flaccid') {
+                options = [
+                    { id: 'mucous', label: 'Mucous membrane involvement', desc: 'มีแผลในปาก ตา หรือเยื่อบุส่วนอื่นๆ' },
+                    { id: 'superficial', label: 'Very superficial blistering/sloughing', desc: 'ตุ่มน้ำตื้นมาก ผิวลอกเป็นสะเก็ดง่าย' },
+                    { id: 'systemic', label: 'Acute systemic illness', desc: 'มีอาการป่วยตามระบบ เช่น ไข้ อ่อนเพลีย' }
+                ];
+            } else if (subType === 'tense') {
+                options = [
+                    { id: 'grouped', label: 'Grouped distribution', desc: 'ตุ่มน้ำพองเต่งเรียงตัวเป็นกลุ่มกระจุก' },
+                    { id: 'urticarial', label: 'Urticarial papules or plaques', desc: 'มีผื่นนูนแดงคล้ายลมพิษนำมาก่อนหรือเกิดร่วมด้วย' },
+                    { id: 'scarring', label: 'Scarring or milia', desc: 'ผื่นหายแล้วทิ้งรอยแผลเป็น หรือสิวหินเม็ดเล็ก' },
+                    { id: 'mucous', label: 'Mucous membrane involvement', desc: 'มีรอยโรคตามเยื่อบุร่วมด้วย' }
+                ];
+            } else if (subType === 'vesicles') {
+                options = [
+                    { id: 'systemic', label: 'Systemic illness', desc: 'มีอาการไข้ ปวดเมื่อยตามตัว' },
+                    { id: 'pruritus', label: 'Intense pruritus', desc: 'มีอาการคันรุนแรงมาก' }
+                ];
+            }
+
+            options.forEach(opt => {
+                const labelNode = document.createElement('label');
+                labelNode.className = 'flex items-start space-x-3 p-3.5 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer transition';
+                labelNode.innerHTML = `
+                    <input type="checkbox" class="feature-chk mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded" value="${opt.id}">
+                    <div>
+                        <span class="text-sm font-semibold text-slate-800 block">${opt.label}</span>
+                        <span class="text-xs text-slate-500">${opt.desc}</span>
+                    </div>
+                `;
+                container.appendChild(labelNode);
+            });
+        }
+
+        function backToStep4() {
+            goToStep(4);
+        }
+
+        function calculateResult() {
+            goToStep(6);
+
+            const resultContainer = document.getElementById('diseaseResultList');
+            const summaryPath = document.getElementById('summaryPath');
+            resultContainer.innerHTML = '';
+
+            let results = [];
+
+            if (selectedDistribution === 'localized') {
+                summaryPath.innerText = `Localized -> ${selectedSubCategory.toUpperCase()}`;
+                results = DIAGNOSIS_DATABASE.localized[selectedSubCategory] || [];
+            } else if (selectedDistribution === 'generalized') {
+                const checkedFeatures = Array.from(document.querySelectorAll('.feature-chk:checked')).map(c => c.value);
+                summaryPath.innerText = `Generalized -> ${selectedSubCategory.toUpperCase()} (${checkedFeatures.join(', ') || 'No specific features'})`;
+
+                const genObj = DIAGNOSIS_DATABASE.generalized[selectedSubCategory];
+                if (genObj) {
+                    if (checkedFeatures.length > 0) {
+                        checkedFeatures.forEach(feat => {
+                            if (genObj[feat]) {
+                                results = results.concat(genObj[feat]);
+                            }
+                        });
+                    }
+                    if (results.length === 0 && genObj.default) {
+                        results = genObj.default;
+                    }
+                }
+            }
+
+            const uniqueResults = [];
+            const map = new Map();
+            for (const item of results) {
+                if(!map.has(item.name)){
+                    map.set(item.name, true);
+                    uniqueResults.push(item);
+                }
+            }
+
+            if (uniqueResults.length === 0) {
+                resultContainer.innerHTML = `
+                    <div class="col-span-2 text-center py-6 text-slate-500 text-sm">
+                        ไม่พบรายการโรคที่ตรงกับเงื่อนไขโดยตรง กรุณาพิจารณาส่งตรวจ Skin Biopsy เพื่อวินิจฉัยเพิ่มเติม
+                    </div>
+                `;
+            } else {
+                uniqueResults.forEach(d => {
+                    let badgeColor = 'bg-slate-100 text-slate-700';
+                    if (d.risk.includes('High') || d.risk.includes('Critical')) {
+                        badgeColor = 'bg-red-100 text-red-700 font-bold';
+                    } else if (d.risk.includes('Moderate')) {
+                        badgeColor = 'bg-amber-100 text-amber-700';
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = 'border border-slate-200 p-4 rounded-xl bg-slate-50 hover:bg-white hover:border-blue-300 transition shadow-sm';
+                    card.innerHTML = `
+                        <div class="flex items-start justify-between mb-2">
+                            <h4 class="font-bold text-slate-800 text-sm">${d.name}</h4>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full ${badgeColor}">${d.risk}</span>
+                        </div>
+                        <p class="text-xs text-slate-600 leading-relaxed">${d.note}</p>
+                    `;
+                    resultContainer.appendChild(card);
+                });
+            }
+        }
+
+        function resetAssessment() {
+            currentStep = 1;
+            selectedDistribution = null;
+            selectedSubCategory = null;
+            selectedFeatures = [];
+
+            document.querySelectorAll('.red-flag-check').forEach(c => c.checked = false);
+            document.getElementById('redFlagAlert').classList.add('hidden');
+            document.querySelectorAll('.card-selectable').forEach(el => el.classList.remove('selected'));
+
+            goToStep(1);
+        }
+
+        function openGalleryModal() {
+            document.getElementById('galleryModal').classList.remove('hidden');
+        }
+
+        function closeGalleryModal() {
+            document.getElementById('galleryModal').classList.add('hidden');
+        }
+
+        function handleUserImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('uploadedImgPreview').src = e.target.result;
+                    document.getElementById('uploadedPreviewContainer').classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function clearUploadedImage() {
+            document.getElementById('userImageInput').value = '';
+            document.getElementById('uploadedPreviewContainer').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
